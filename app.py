@@ -22,15 +22,19 @@ def login_account():
         return jsonify({"status": "error", "message": "Please enter email and password"})
     
     try:
+        print(f"Attempting login for: {email}")
         api = IQ_Option(email, password)
         check, reason = api.connect()
         
         if check:
             balance = api.get_balance()
+            print(f"Login successful! Balance: {balance}")
             return jsonify({"status": "success", "message": "Logged in successfully!", "balance": balance})
         else:
+            print(f"Login failed: {reason}")
             return jsonify({"status": "error", "message": str(reason)})
     except Exception as e:
+        print(f"Login Exception occurred: {str(e)}")
         return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/start', methods=['POST'])
