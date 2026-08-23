@@ -8,7 +8,8 @@
         body { background-color: #0d1117; color: #c9d1d9; font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         .card { background: #161b22; padding: 20px; border-radius: 10px; margin: 15px auto; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         input { width: 90%; padding: 10px; margin: 8px 0; background: #21262d; border: 1px solid #30363d; color: white; border-radius: 5px; box-sizing: border-box; }
-        button { width: 95%; padding: 12px; margin: 10px 0; border: none; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        button { width: 95%; padding: 12px; margin: 8px 0; border: none; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        .btn-login { background-color: #1f6feb; color: white; }
         .btn-start { background-color: #238636; color: white; }
         .btn-stop { background-color: #da3633; color: white; }
         #log-box { background: #000; color: #00ff00; padding: 10px; text-align: left; height: 120px; overflow-y: auto; font-family: monospace; font-size: 12px; border-radius: 5px; }
@@ -22,6 +23,7 @@
         <h3>Account Login</h3>
         <input type="text" id="iq-email" placeholder="IQ Option Email">
         <input type="password" id="iq-password" placeholder="IQ Option Password">
+        <button class="btn-login" onclick="loginAccount()">Login / Connect</button>
         
         <h3>Status: <span id="bot-status" style="color: #f85149;">Stopped</span></h3>
         <h3>Balance: $<span id="bot-balance">0.00</span></h3>
@@ -32,7 +34,7 @@
 
     <div class="card">
         <h3>Live Logs</h3>
-        <div id="log-box">[System] Interface loaded. Ready to start...</div>
+        <div id="log-box">[System] Interface loaded. Enter credentials to log in...</div>
     </div>
 
     <script>
@@ -42,7 +44,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        function startBot() {
+        function loginAccount() {
             const email = document.getElementById('iq-email').value;
             const password = document.getElementById('iq-password').value;
 
@@ -51,8 +53,8 @@
                 return;
             }
 
-            logMessage("Connecting to IQ Option...");
-            fetch('/start', {
+            logMessage("Authenticating with IQ Option...");
+            fetch('/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email, password: password })
@@ -60,33 +62,43 @@
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'success') {
-                    logMessage("Connected successfully!");
-                    document.getElementById('bot-status').innerText = "Running";
-                    document.getElementById('bot-status').style.color = "#238636";
+                    logMessage("Login successful! Balance: $" + data.balance);
+                    document.getElementById('bot-balance').innerText = data.balance;
+                } else {
+                    logMessage("Login Error: " + data.message);
+                }
+            })
+            .catch(err => logMessage("Network error: " + err));
+        }
+
+        function startBot() {
+            logMessage("Starting bot...");
+            fetch('/start', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    logMessage("Bot is running!");
                 } else {
                     logMessage("Error: " + data.message);
                 }
-            })
-            .catch(err => {
-                logMessage("Network error: " + err);
             });
         }
 
         function stopBot() {
-            logMessage("Bot stopped.");
-            document.getElementById('bot-status').innerText = "Stopped";
-            document.getElementById('bot-status').style.color = "#f85149";
+            fetch('/stop', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                logMessage("Bot stopped.");
+            });
         }
 
         setInterval(() => {
             fetch('/stats')
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'Running') {
-                    document.getElementById('bot-status').innerText = data.status;
-                    document.getElementById('bot-status').style.color = '#238636';
-                    document.getElementById('bot-balance').innerText = data.balance;
-                }
+                document.getElementById('bot-status').innerText = data.status;
+                document.getElementById('bot-status').style.color = data.status.includes('Running') ? '#238636' : '#f85149';
+                document.getElementById('bot-balance').innerText = data.balance;
             });
         }, 3000);
     </script>
