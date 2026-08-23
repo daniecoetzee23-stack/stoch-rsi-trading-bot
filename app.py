@@ -5,13 +5,14 @@ import os
 app = Flask(__name__)
 
 api = None
+is_running = False
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/start', methods=['POST'])
-def start_bot():
+@app.route('/login', methods=['POST'])
+def login_account():
     global api
     data = request.get_json()
     email = data.get('email')
@@ -25,19 +26,36 @@ def start_bot():
         check, reason = api.connect()
         
         if check:
-            return jsonify({"status": "success", "message": "Connected successfully!"})
+            balance = api.get_balance()
+            return jsonify({"status": "success", "message": "Logged in successfully!", "balance": balance})
         else:
             return jsonify({"status": "error", "message": str(reason)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+@app.route('/start', methods=['POST'])
+def start_bot():
+    global is_running, api
+    if not api or not api.check_connect():
+        return jsonify({"status": "error", "message": "Please log in first!"})
+    
+    is_running = True
+    return jsonify({"status": "success", "message": "Bot started!"})
+
+@app.route('/stop', methods=['POST'])
+def stop_bot():
+    global is_running
+    is_running = False
+    return jsonify({"status": "success", "message": "Bot stopped!"})
+
 @app.route('/stats')
 def stats():
-    global api
+    global api, is_running
     try:
         if api and api.check_connect():
             balance = api.get_balance()
-            return jsonify({"status": "Running", "balance": balance})
+            status_text = "Running" if is_running else "Stopped (Logged In)"
+            return jsonify({"status": status_text, "balance": balance})
     except Exception:
         pass
     return jsonify({"status": "Stopped", "balance": 0.00})
