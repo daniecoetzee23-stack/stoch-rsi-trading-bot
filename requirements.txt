@@ -1,5 +1,6 @@
 flask
 pandas
 gunicorn
-iqoptionapi
 websocket-client
+requests
+iqoptionapi
